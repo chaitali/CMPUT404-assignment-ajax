@@ -31,42 +31,40 @@ var context = canvas.getContext("2d");
 var W = canvas.width  = window.innerWidth-6;
 var H = canvas.height = window.innerHeight-50;
 
-
+/// Request/Fetch info from https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API/Using_Fetch
 function sendJSONXMLHTTPRequest(url, objects, callback) {
-    var xhr = new XMLHttpRequest();
-    xhr.onreadystatechange = function () {
-        if (xhr.readyState==4) {
-            try {
-                if (xhr.status==200) {
-                    //XXX: parse some JSON from the request!
-                    //XXX: Pass the data to the callback!
-                }
-            } 
-            catch(e) {
-                alert('Error: ' + e.name);
-            }
+    var request = new Request(url, objects);
+
+    return fetch(request).then((response) => {
+        if (response.status === 200) { // OK
+            return response.json();
         }
-    };
-    //XXX: POST to a URL
-    //XXX: set the mimetype and the accept headers!
-    // Remember to use application/json !
+    }).then((reponseObject) => {
+        if (callback)   {
+            callback(reponseObject)
+        }
+    }).catch(error => {
+        console.error(error);
+    });
 }
 
 
 world = {};
 
 //XXX: TODO Make this prettier!
+/// https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Basic_usage For canvas reference
 function drawCircle(context,entity) {
     with(context) {
         beginPath();              
         lineWidth = 3;
         var x = entity["x"];
         var y = entity["y"];
-        //moveTo(x,y);
+        // moveTo(x + 20, y + 20);
         fillStyle = entity["colour"];
         strokeStyle = fillStyle;
         arc(x, y, (entity["radius"])?entity["radius"]:50, 0, 2.0 * Math.PI, false);  
-        stroke();                                
+        fill('evenodd');
+        stroke();                   
     }
 }
 
@@ -136,9 +134,16 @@ function getPosition(e) {
 
 function addEntity(entity, data) {
     world[entity] = data;
-    drawNextFrame(); // (but should we?)
     //XXX: Send a XHTML Request that updates the entity you just  modified!
-
+    var url = "http://" + host + "/entity/" + entity;
+    requestObject = {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    };
+    sendJSONXMLHTTPRequest(url, requestObject, null);
 }
 
 var counter = 0;
@@ -246,29 +251,43 @@ mouse = (function() {
 
 // Add the application specific mouse listeners!
 //XXX: TODO Make these prettier!
+/// https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Basic_usage For canvas reference
 mouse.mousedowners.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'blue'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'pink'});
 });
 
 mouse.mouseuppers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'red'});
+    addEntityWithoutName({'x':x,'y':y,'colour':'darksalmon'});
 });
 
 mouse.mousedraggers.push(function(x,y,clicked,e) {
-    addEntityWithoutName({'x':x,'y':y,'colour':'green',
+    addEntityWithoutName({'x':x,'y':y,'colour':'#FFA500',
                           'radius':10});
 });
+
+function updateWorld(newWorld) {
+    world = newWorld;
+    drawNextFrame();
+}
 
 
 function update() {
     //XXX: TODO Get the world from the webservice using a XMLHTTPRequest
+    var url = "http://" + host + "/world"
+    var callback = updateWorld;
+    var requestObject = {
+        method: "GET",
+        headers: {
+            "Content-Type": "application/json",
+            "Accept": "application/json"
+        }
+    };
+    sendJSONXMLHTTPRequest(url, requestObject, callback)
     drawFrame();
 }
 
 // 30 frames per second
 setInterval( update, 1000/30.0);
-
-
 
     </script>
 </body>
